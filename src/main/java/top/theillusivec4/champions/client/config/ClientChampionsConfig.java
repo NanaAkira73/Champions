@@ -24,7 +24,6 @@ public class ClientChampionsConfig {
     public final IntValue hudXOffset;
     public final IntValue hudYOffset;
     public final IntValue hudRange;
-    public final ForgeConfigSpec.BooleanValue enableWailaIntegration;
 
     public Client(ForgeConfigSpec.Builder builder) {
       builder.push("hud");
@@ -38,11 +37,6 @@ public class ClientChampionsConfig {
       hudRange = builder.comment("The distance, in blocks, from which the champion HUD can be seen")
         .translation(CONFIG_PREFIX + "hudRange").defineInRange("hudRange", 50, 0, 1000);
 
-      enableWailaIntegration =
-        builder.comment("Set to true to move the WAILA overlay underneath the champion HUD")
-          .translation(CONFIG_PREFIX + "enableWailaIntegration")
-          .define("enableWailaIntegration", true);
-
       builder.pop();
     }
   }
@@ -50,12 +44,10 @@ public class ClientChampionsConfig {
   public static int hudXOffset;
   public static int hudYOffset;
   public static int hudRange;
-  public static boolean enableWailaIntegration;
 
   public static void bake() {
     hudXOffset = CLIENT.hudXOffset.get();
     hudYOffset = CLIENT.hudYOffset.get();
     hudRange = CLIENT.hudRange.get();
-    enableWailaIntegration = CLIENT.enableWailaIntegration.get();
   }
 }

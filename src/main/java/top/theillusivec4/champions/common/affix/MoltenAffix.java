@@ -70,7 +70,7 @@ public class MoltenAffix extends BasicAffix {
       livingEntity.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 40, 0, true, false));
 
       if (!ChampionsConfig.moltenWaterResistance && livingEntity.isInWaterOrRain()) {
-        livingEntity.hurt(DamageSource.DROWN, 1.0F);
+        livingEntity.hurt(livingEntity.damageSources().drown(), 1.0F);
       }
     }
   }
@@ -79,7 +79,6 @@ public class MoltenAffix extends BasicAffix {
   public boolean onAttack(IChampion champion, LivingEntity target, DamageSource source,
                           float amount) {
     target.setSecondsOnFire(10);
-    source.setIsFire();
     return true;
   }
 }

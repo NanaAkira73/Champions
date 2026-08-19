@@ -25,7 +25,3 @@ Creates elite mobs of different rarities, with enhanced stats and extra abilitie
   versionRange="${mc_version_range}"
   ordering="NONE"
   side="BOTH"
-[[dependencies.champions]]
-  modId="scalinghealth"
-  mandatory=false
-  versionRange="[6.3.0,)"

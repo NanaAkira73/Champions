@@ -20,33 +20,28 @@
 package top.theillusivec4.champions;
 
 import com.electronwill.nightconfig.core.CommentedConfig;
-import com.google.gson.JsonObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
 import javax.annotation.Nonnull;
 import net.minecraft.client.Minecraft;
-import net.minecraft.commands.synchronization.ArgumentSerializer;
-import net.minecraft.commands.synchronization.ArgumentTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
+import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
+import top.theillusivec4.champions.common.particle.RankParticle.RankFactory;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Registry;
 import net.minecraft.core.dispenser.DispenseItemBehavior;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.block.DispenserBlock;
-import net.minecraftforge.client.gui.OverlayRegistry;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
-import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.InterModComms;
-import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.IConfigSpec;
@@ -54,7 +49,6 @@ import net.minecraftforge.fml.config.ModConfig.Type;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.commons.io.FileUtils;
@@ -64,16 +58,12 @@ import top.theillusivec4.champions.api.IChampion;
 import top.theillusivec4.champions.api.IChampionsApi;
 import top.theillusivec4.champions.api.impl.ChampionsApiImpl;
 import top.theillusivec4.champions.client.ChampionsOverlay;
-import top.theillusivec4.champions.client.ClientEventHandler;
 import top.theillusivec4.champions.client.affix.ClientAffixEventsHandler;
 import top.theillusivec4.champions.client.config.ClientChampionsConfig;
 import top.theillusivec4.champions.common.affix.core.AffixManager;
 import top.theillusivec4.champions.common.capability.ChampionCapability;
 import top.theillusivec4.champions.common.config.ChampionsConfig;
-import top.theillusivec4.champions.common.integration.theoneprobe.TheOneProbePlugin;
-import top.theillusivec4.champions.common.integration.waila.WailaPlugin;
 import top.theillusivec4.champions.common.item.ChampionEggItem;
-import top.theillusivec4.champions.common.loot.EntityIsChampion;
 import top.theillusivec4.champions.common.loot.LootItemChampionPropertyCondition;
 import top.theillusivec4.champions.common.network.NetworkHandler;
 import top.theillusivec4.champions.common.rank.RankManager;
@@ -83,7 +73,6 @@ import top.theillusivec4.champions.common.stat.ChampionsStats;
 import top.theillusivec4.champions.common.util.EntityManager;
 import top.theillusivec4.champions.server.command.AffixArgument;
 import top.theillusivec4.champions.server.command.ChampionSelectorOptions;
-import top.theillusivec4.champions.server.command.ChampionsCommand;
 
 @Mod(Champions.MODID)
 public class Champions {
@@ -92,29 +81,20 @@ public class Champions {
   public static final Logger LOGGER = LogManager.getLogger();
   public static final IChampionsApi API = ChampionsApiImpl.getInstance();
 
-  public static boolean scalingHealthLoaded = false;
-  public static boolean gameStagesLoaded = false;
-
   public Champions() {
-    FMLJavaModLoadingContext.get().getModEventBus().addListener(this::enqueueIMC);
     ModLoadingContext.get().registerConfig(Type.CLIENT, ClientChampionsConfig.CLIENT_SPEC);
     ModLoadingContext.get().registerConfig(Type.SERVER, ChampionsConfig.SERVER_SPEC);
     createServerConfig(ChampionsConfig.RANKS_SPEC, "ranks");
     createServerConfig(ChampionsConfig.AFFIXES_SPEC, "affixes");
     createServerConfig(ChampionsConfig.ENTITIES_SPEC, "entities");
-    gameStagesLoaded = ModList.get().isLoaded("gamestages");
-
-    if (gameStagesLoaded) {
-      ModLoadingContext.get()
-        .registerConfig(Type.SERVER, ChampionsConfig.STAGE_SPEC, "champions-gamestages.toml");
-    }
     IEventBus eventBus = FMLJavaModLoadingContext.get().getModEventBus();
+    ChampionsRegistry.REGISTERS.forEach(register -> register.register(eventBus));
     eventBus.addListener(this::config);
     eventBus.addListener(this::setup);
     eventBus.addListener(this::clientSetup);
+    eventBus.addListener(this::registerParticleFactories);
+    eventBus.addListener(this::registerOverlays);
     eventBus.addListener(this::registerCaps);
-    MinecraftForge.EVENT_BUS.addListener(this::registerCommands);
-    scalingHealthLoaded = ModList.get().isLoaded("scalinghealth");
   }
 
   private void setup(final FMLCommonSetupEvent evt) {
@@ -124,16 +104,11 @@ public class Champions {
     evt.enqueueWork(() -> {
       ChampionsStats.setup();
       ChampionSelectorOptions.setup();
-      Registry.register(Registry.LOOT_CONDITION_TYPE,
-        new ResourceLocation(RegistryReference.IS_CHAMPION), EntityIsChampion.type);
-      Registry.register(Registry.LOOT_CONDITION_TYPE,
-        new ResourceLocation(RegistryReference.CHAMPION_PROPERTIES),
-        LootItemChampionPropertyCondition.INSTANCE);
       DispenseItemBehavior dispenseBehavior = (source, stack) -> {
         Direction direction = source.getBlockState().getValue(DispenserBlock.FACING);
         Optional<EntityType<?>> entitytype = ChampionEggItem.getType(stack);
         entitytype.ifPresent(type -> {
-          Entity entity = type.create(source.getLevel(), stack.getTag(), null, null,
+          Entity entity = type.create((ServerLevel) source.getLevel(), stack.getTag(), null,
             source.getPos().relative(direction), MobSpawnType.DISPENSER, true,
             direction != Direction.UP);
 
@@ -146,51 +121,27 @@ public class Champions {
         });
         return stack;
       };
-      DispenserBlock.registerBehavior(ChampionsRegistry.EGG, dispenseBehavior);
-      ArgumentTypes.register(Champions.MODID + ":affix", AffixArgument.class,
-        new ArgumentSerializer<>() {
-          @Override
-          public void serializeToNetwork(@Nonnull final AffixArgument argument,
-                                         @Nonnull final FriendlyByteBuf buffer) {
-            // NO-OP
-          }
-
-          @Nonnull
-          @Override
-          public AffixArgument deserializeFromNetwork(@Nonnull final FriendlyByteBuf buffer) {
-            return new AffixArgument();
-          }
-
-          @Override
-          public void serializeToJson(@Nonnull final AffixArgument argument,
-                                      @Nonnull final JsonObject json) {
-            // NO-OP
-          }
-        });
+      DispenserBlock.registerBehavior(ChampionsRegistry.EGG.get(), dispenseBehavior);
     });
   }
 
   @SuppressWarnings("unused")
   private void clientSetup(final FMLClientSetupEvent evt) {
-    MinecraftForge.EVENT_BUS.register(new ClientEventHandler());
     MinecraftForge.EVENT_BUS.register(new ClientAffixEventsHandler());
     Minecraft.getInstance().getItemColors()
-      .register(ChampionEggItem::getColor, ChampionsRegistry.EGG);
+      .register(ChampionEggItem::getColor, ChampionsRegistry.EGG.get());
+  }
 
-    if (ModList.get().isLoaded("waila")) {
-      WailaPlugin.setup();
-    }
-    evt.enqueueWork(() -> {
-      OverlayRegistry.registerOverlayTop("Champions Health Bar", new ChampionsOverlay());
-    });
+  private void registerParticleFactories(final RegisterParticleProvidersEvent evt) {
+    evt.registerSpriteSet(ChampionsRegistry.RANK.get(), RankFactory::new);
+  }
+
+  private void registerOverlays(final RegisterGuiOverlaysEvent evt) {
+    evt.registerAboveAll("champions_health_bar", new ChampionsOverlay());
   }
 
   private void registerCaps(final RegisterCapabilitiesEvent evt) {
     evt.register(IChampion.class);
-  }
-
-  private void registerCommands(final RegisterCommandsEvent evt) {
-    ChampionsCommand.register(evt.getDispatcher());
   }
 
   private void config(final ModConfigEvent evt) {
@@ -233,15 +184,6 @@ public class Champions {
       } catch (IOException e) {
         LOGGER.error("Error creating default config for " + fileName);
       }
-    }
-  }
-
-  private void enqueueIMC(final InterModEnqueueEvent event) {
-    // register TheOneProbe integration
-    if (ModList.get().isLoaded("theoneprobe")) {
-      Champions.LOGGER.info("Champions detected TheOneProbe, registering plugin now");
-      InterModComms.sendTo(MODID, "theoneprobe", "getTheOneProbe",
-        TheOneProbePlugin.GetTheOneProbe::new);
     }
   }
 }

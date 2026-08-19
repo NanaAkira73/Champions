@@ -13,8 +13,8 @@ import net.minecraft.world.level.block.entity.BeaconBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import top.theillusivec4.champions.Champions;
 import top.theillusivec4.champions.common.config.ChampionsConfig;
+import net.minecraftforge.registries.ForgeRegistries;
 import top.theillusivec4.champions.common.config.ConfigEnums.Permission;
-import top.theillusivec4.champions.common.integration.gamestages.GameStagesPlugin;
 
 public class ChampionHelper {
 
@@ -28,9 +28,8 @@ public class ChampionHelper {
 
   public static boolean checkPotential(final LivingEntity livingEntity) {
     return isValidEntity(livingEntity) &&
-      isValidDimension(livingEntity.getLevel().dimension().location()) &&
-      !nearActiveBeacon(livingEntity) &&
-      (!Champions.gameStagesLoaded || GameStagesPlugin.hasEntityStage(livingEntity));
+      isValidDimension(livingEntity.level().dimension().location()) &&
+      !nearActiveBeacon(livingEntity);
   }
 
   public static void addBeacon(BlockPos pos) {
@@ -41,7 +40,7 @@ public class ChampionHelper {
   }
 
   private static boolean isValidEntity(final LivingEntity livingEntity) {
-    ResourceLocation rl = livingEntity.getType().getRegistryName();
+    ResourceLocation rl = ForgeRegistries.ENTITY_TYPES.getKey(livingEntity.getType());
 
     if (rl == null) {
       return false;
@@ -74,7 +73,7 @@ public class ChampionHelper {
     Set<BlockPos> toRemove = new HashSet<>();
 
     for (BlockPos pos : BEACON_POS) {
-      Level level = livingEntity.getLevel();
+      Level level = livingEntity.level();
 
       if (!level.isLoaded(pos)) {
         continue;

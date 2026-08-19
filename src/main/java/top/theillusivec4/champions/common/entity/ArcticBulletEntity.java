@@ -17,12 +17,12 @@ import top.theillusivec4.champions.common.registry.ChampionsRegistry;
 
 public class ArcticBulletEntity extends BaseBulletEntity {
 
-  public ArcticBulletEntity(Level level) {
-    super(ChampionsRegistry.ARCTIC_BULLET, level);
+  public ArcticBulletEntity(EntityType<? extends ArcticBulletEntity> type, Level level) {
+    super(type, level);
   }
 
   public ArcticBulletEntity(Level level, LivingEntity livingEntity, @Nonnull Entity entity, Direction.Axis axis) {
-    super(ChampionsRegistry.ARCTIC_BULLET, level, livingEntity, entity, axis);
+    super(ChampionsRegistry.ARCTIC_BULLET.get(), level, livingEntity, entity, axis);
   }
 
   @Override

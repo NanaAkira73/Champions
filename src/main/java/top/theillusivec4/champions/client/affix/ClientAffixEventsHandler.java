@@ -10,7 +10,7 @@ public class ClientAffixEventsHandler {
 
   @SubscribeEvent
   public void handleJailing(MovementInputUpdateEvent evt) {
-    if (evt.getPlayer().hasEffect(ChampionsRegistry.PARALYSIS)) {
+    if (evt.getEntity().hasEffect(ChampionsRegistry.PARALYSIS.get())) {
       Input input = evt.getInput();
       input.shiftKeyDown = false;
       input.jumping = false;

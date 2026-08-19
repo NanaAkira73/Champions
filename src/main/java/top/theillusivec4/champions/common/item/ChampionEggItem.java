@@ -14,11 +14,10 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
-import net.minecraft.network.chat.BaseComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.stats.Stats;
@@ -60,14 +59,7 @@ public class ChampionEggItem extends Item {
   private static final String CHAMPION_TAG = "Champion";
 
   public ChampionEggItem() {
-    super(new Item.Properties().tab(CreativeModeTab.TAB_MISC));
-    this.setRegistryName(RegistryReference.EGG);
-  }
-
-  @Override
-  public void fillItemCategory(@Nonnull CreativeModeTab group,
-                               @Nonnull NonNullList<ItemStack> items) {
-    // NO-OP
+    super(new Item.Properties());
   }
 
   @Nonnull
@@ -83,7 +75,7 @@ public class ChampionEggItem extends Item {
         tier = tag.getInt(TIER_TAG);
       }
     }
-    BaseComponent root = new TranslatableComponent("rank.champions.title." + tier);
+    MutableComponent root = Component.translatable("rank.champions.title." + tier);
     root.append(" ");
     root.append(type.map(EntityType::getDescription).orElse(EntityType.ZOMBIE.getDescription()));
     root.append(" ");
@@ -109,7 +101,7 @@ public class ChampionEggItem extends Item {
         listNBT.forEach(affix -> Champions.API.getAffix(affix.getAsString()).ifPresent(
             affix1 -> {
               final MutableComponent component =
-                  new TranslatableComponent("affix.champions." + affix1.getIdentifier());
+                  Component.translatable("affix.champions." + affix1.getIdentifier());
               component.setStyle(Style.EMPTY.withColor(ChatFormatting.GRAY));
               tooltip.add(component);
             }));
@@ -117,7 +109,7 @@ public class ChampionEggItem extends Item {
     }
 
     if (!hasAffix) {
-      final MutableComponent component = new TranslatableComponent("item.champions.egg.tooltip");
+      final MutableComponent component = Component.translatable("item.champions.egg.tooltip");
       component.setStyle(Style.EMPTY.withColor(ChatFormatting.AQUA));
       tooltip.add(component);
     }
@@ -143,7 +135,7 @@ public class ChampionEggItem extends Item {
       Optional<EntityType<?>> entitytype = getType(itemstack);
       entitytype.ifPresent(type -> {
         Entity entity = type
-            .create((ServerLevel) world, itemstack.getTag(), null, context.getPlayer(), blockpos1,
+            .create((ServerLevel) world, itemstack.getTag(), null, blockpos1,
                 MobSpawnType.SPAWN_EGG, true,
                 !Objects.equals(blockpos, blockpos1) && direction == Direction.UP);
 
@@ -182,7 +174,7 @@ public class ChampionEggItem extends Item {
           Optional<EntityType<?>> entityType = getType(itemstack);
           return entityType.map(type -> {
             Entity entity = type
-                .create((ServerLevel) worldIn, itemstack.getTag(), null, playerIn, blockpos,
+                .create((ServerLevel) worldIn, itemstack.getTag(), null, blockpos,
                     MobSpawnType.SPAWN_EGG, false, false);
 
             if (entity instanceof LivingEntity) {
@@ -222,7 +214,7 @@ public class ChampionEggItem extends Item {
         String id = entityTag.getString(ID_TAG);
 
         if (!id.isEmpty()) {
-          EntityType<?> type = ForgeRegistries.ENTITIES.getValue(new ResourceLocation(id));
+          EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(new ResourceLocation(id));
 
           if (type != null) {
             return Optional.of(type);

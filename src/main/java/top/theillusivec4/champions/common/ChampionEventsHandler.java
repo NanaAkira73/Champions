@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import net.minecraft.Util;
 import net.minecraft.network.chat.ChatType;
-import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Tuple;
@@ -17,17 +17,17 @@ import net.minecraft.world.level.block.entity.BeaconBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingEvent.LivingUpdateEvent;
+import net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent;
 import net.minecraftforge.event.entity.living.LivingExperienceDropEvent;
 import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
-import net.minecraftforge.event.world.ExplosionEvent;
+import net.minecraftforge.event.level.ExplosionEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import top.theillusivec4.champions.api.IChampion;
 import top.theillusivec4.champions.common.capability.ChampionCapability;
@@ -43,7 +43,7 @@ public class ChampionEventsHandler {
 
   @SubscribeEvent
   public void onLivingXpDrop(LivingExperienceDropEvent evt) {
-    LivingEntity livingEntity = evt.getEntityLiving();
+    LivingEntity livingEntity = evt.getEntity();
     ChampionCapability.getCapability(livingEntity)
       .ifPresent(champion -> champion.getServer().getRank().ifPresent(rank -> {
         int growth = rank.getGrowthFactor();
@@ -61,7 +61,7 @@ public class ChampionEventsHandler {
     Explosion explosion = evt.getExplosion();
     Entity entity = explosion.getExploder();
 
-    if (entity != null && !entity.getLevel().isClientSide()) {
+    if (entity != null && !entity.level().isClientSide()) {
       ChampionCapability.getCapability(entity)
         .ifPresent(champion -> champion.getServer().getRank().ifPresent(rank -> {
           int growth = rank.getGrowthFactor();
@@ -74,10 +74,10 @@ public class ChampionEventsHandler {
   }
 
   @SubscribeEvent
-  public void onLivingJoinWorld(EntityJoinWorldEvent evt) {
+  public void onLivingJoinWorld(EntityJoinLevelEvent evt) {
     Entity entity = evt.getEntity();
 
-    if (!entity.getLevel().isClientSide()) {
+    if (!entity.level().isClientSide()) {
       ChampionCapability.getCapability(entity).ifPresent(champion -> {
         IChampion.Server serverChampion = champion.getServer();
         Optional<Rank> maybeRank = serverChampion.getRank();
@@ -96,10 +96,10 @@ public class ChampionEventsHandler {
   }
 
   @SubscribeEvent
-  public void onLivingUpdate(LivingUpdateEvent evt) {
-    LivingEntity livingEntity = evt.getEntityLiving();
+  public void onLivingUpdate(LivingTickEvent evt) {
+    LivingEntity livingEntity = evt.getEntity();
 
-    if (livingEntity.getLevel().isClientSide()) {
+    if (livingEntity.level().isClientSide()) {
       ChampionCapability.getCapability(livingEntity).ifPresent(champion -> {
         IChampion.Client clientChampion = champion.getClient();
         clientChampion.getAffixes().forEach(affix -> affix.onClientUpdate(champion));
@@ -110,7 +110,7 @@ public class ChampionEventsHandler {
             float g = (float) ((color >> 8) & 0xFF) / 255f;
             float b = (float) ((color) & 0xFF) / 255f;
 
-            livingEntity.getLevel().addParticle(ChampionsRegistry.RANK,
+            livingEntity.level().addParticle(ChampionsRegistry.RANK.get(),
               livingEntity.position().x + (livingEntity.getRandom().nextDouble() - 0.5D) *
                 (double) livingEntity.getBbWidth(), livingEntity.position().y +
                 livingEntity.getRandom().nextDouble() * livingEntity.getBbHeight(),
@@ -136,9 +136,9 @@ public class ChampionEventsHandler {
 
   @SubscribeEvent
   public void onLivingAttack(LivingAttackEvent evt) {
-    LivingEntity livingEntity = evt.getEntityLiving();
+    LivingEntity livingEntity = evt.getEntity();
 
-    if (livingEntity.getLevel().isClientSide()) {
+    if (livingEntity.level().isClientSide()) {
       return;
     }
     ChampionCapability.getCapability(livingEntity).ifPresent(champion -> {
@@ -159,7 +159,7 @@ public class ChampionEventsHandler {
       IChampion.Server serverChampion = champion.getServer();
       serverChampion.getAffixes().forEach(affix -> {
 
-        if (!affix.onAttack(champion, evt.getEntityLiving(), evt.getSource(), evt.getAmount())) {
+        if (!affix.onAttack(champion, evt.getEntity(), evt.getSource(), evt.getAmount())) {
           evt.setCanceled(true);
         }
       });
@@ -168,9 +168,9 @@ public class ChampionEventsHandler {
 
   @SubscribeEvent
   public void onLivingHurt(LivingHurtEvent evt) {
-    LivingEntity livingEntity = evt.getEntityLiving();
+    LivingEntity livingEntity = evt.getEntity();
 
-    if (!livingEntity.getLevel().isClientSide()) {
+    if (!livingEntity.level().isClientSide()) {
       float[] amounts = new float[] {evt.getAmount(), evt.getAmount()};
       ChampionCapability.getCapability(livingEntity).ifPresent(champion -> {
         IChampion.Server serverChampion = champion.getServer();
@@ -183,9 +183,9 @@ public class ChampionEventsHandler {
 
   @SubscribeEvent
   public void onLivingDamage(LivingDamageEvent evt) {
-    LivingEntity livingEntity = evt.getEntityLiving();
+    LivingEntity livingEntity = evt.getEntity();
 
-    if (!livingEntity.getLevel().isClientSide()) {
+    if (!livingEntity.level().isClientSide()) {
       float[] amounts = new float[] {evt.getAmount(), evt.getAmount()};
       ChampionCapability.getCapability(livingEntity).ifPresent(champion -> {
         IChampion.Server serverChampion = champion.getServer();
@@ -198,9 +198,9 @@ public class ChampionEventsHandler {
 
   @SubscribeEvent
   public void onLivingDeath(LivingDeathEvent evt) {
-    LivingEntity livingEntity = evt.getEntityLiving();
+    LivingEntity livingEntity = evt.getEntity();
 
-    if (livingEntity.getLevel().isClientSide()) {
+    if (livingEntity.level().isClientSide()) {
       return;
     }
     ChampionCapability.getCapability(livingEntity).ifPresent(champion -> {
@@ -223,11 +223,10 @@ public class ChampionEventsHandler {
               MinecraftServer server = livingEntity.getServer();
 
               if (server != null) {
-                server.getPlayerList().broadcastMessage(
-                  new TranslatableComponent("rank.champions.title." + rank.getTier())
+                server.getPlayerList().broadcastSystemMessage(
+                  Component.translatable("rank.champions.title." + rank.getTier())
                     .append(" ")
-                    .append(livingEntity.getCombatTracker().getDeathMessage()),
-                  ChatType.SYSTEM, Util.NIL_UUID);
+                    .append(livingEntity.getCombatTracker().getDeathMessage()), false);
               }
             }
           }
@@ -258,9 +257,9 @@ public class ChampionEventsHandler {
 
   @SubscribeEvent
   public void onLivingHeal(LivingHealEvent evt) {
-    LivingEntity livingEntity = evt.getEntityLiving();
+    LivingEntity livingEntity = evt.getEntity();
 
-    if (!livingEntity.getLevel().isClientSide()) {
+    if (!livingEntity.level().isClientSide()) {
       float[] amounts = new float[] {evt.getAmount(), evt.getAmount()};
       ChampionCapability.getCapability(livingEntity).ifPresent(champion -> {
         IChampion.Server serverChampion = champion.getServer();

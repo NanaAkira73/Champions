@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import net.minecraft.util.RandomSource;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -14,7 +14,7 @@ import top.theillusivec4.champions.Champions;
 
 public class ConfigLoot {
 
-  private static final Random RAND = new Random();
+  private static final RandomSource RAND = RandomSource.create();
   private static final Map<Integer, List<Data>> DROPS = new HashMap<>();
 
   public static List<ItemStack> getLootDrops(int tier) {
