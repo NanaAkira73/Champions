@@ -20,6 +20,7 @@ import top.theillusivec4.champions.common.entity.ArcticBulletEntity;
 import top.theillusivec4.champions.common.entity.EnkindlingBulletEntity;
 import top.theillusivec4.champions.common.item.ChampionEggItem;
 import top.theillusivec4.champions.common.loot.ChampionLootModifier;
+import top.theillusivec4.champions.common.loot.EntityIsChampion;
 import top.theillusivec4.champions.common.loot.LootItemChampionPropertyCondition;
 import top.theillusivec4.champions.common.potion.ParalysisEffect;
 import top.theillusivec4.champions.common.potion.WoundEffect;
@@ -66,6 +67,9 @@ public class ChampionsRegistry {
   public static final RegistryObject<LootItemConditionType> CHAMPION_PROPERTIES =
       LOOT_CONDITION_TYPES.register("champion_properties",
           () -> LootItemChampionPropertyCondition.INSTANCE);
+
+  public static final RegistryObject<LootItemConditionType> IS_CHAMPION =
+      LOOT_CONDITION_TYPES.register("entity_champion", () -> EntityIsChampion.TYPE);
 
   public static final List<DeferredRegister<?>> REGISTERS =
       List.of(ITEMS, PARTICLE_TYPES, MOB_EFFECTS, ENTITY_TYPES, GLOBAL_LOOT_MODIFIERS,

@@ -19,6 +19,7 @@ import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraftforge.common.loot.IGlobalLootModifier;
 import net.minecraftforge.common.loot.LootModifier;
@@ -62,6 +63,29 @@ public class ChampionLootModifier extends LootModifier {
     }
     ChampionCapability.getCapability(entity).ifPresent(champion -> {
       IChampion.Server serverChampion = champion.getServer();
+      ServerLevel serverWorld = (ServerLevel) entity.level();
+
+      if (ChampionsConfig.lootSource != ConfigEnums.LootSource.CONFIG) {
+        LootTable lootTable = serverWorld.getServer().getLootData()
+          .getLootTable(ResourceLocation.parse(RegistryReference.CHAMPION_LOOT));
+        LootParams.Builder lootParamsBuilder = new LootParams.Builder(serverWorld)
+          .withParameter(LootContextParams.THIS_ENTITY, entity)
+          .withParameter(LootContextParams.ORIGIN, entity.position())
+          .withParameter(LootContextParams.DAMAGE_SOURCE, damageSource)
+          .withOptionalParameter(LootContextParams.KILLER_ENTITY, damageSource.getEntity())
+          .withOptionalParameter(LootContextParams.DIRECT_KILLER_ENTITY,
+            damageSource.getDirectEntity());
+
+        if (entity instanceof LivingEntity livingEntity) {
+          LivingEntity attackingEntity = livingEntity.getKillCredit();
+
+          if (attackingEntity instanceof Player) {
+            lootParamsBuilder = lootParamsBuilder.withLuck(((Player) attackingEntity).getLuck());
+          }
+        }
+        lootTable.getRandomItems(lootParamsBuilder.create(LootContextParamSets.ENTITY),
+          generatedLoot::add);
+      }
 
       if (ChampionsConfig.lootSource != ConfigEnums.LootSource.LOOT_TABLE) {
         List<ItemStack> loot = ConfigLoot
